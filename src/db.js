@@ -47,7 +47,7 @@ const defaultData = {
   contacts: [
     {
       id: 'contact_default_1',
-      name: 'Nicácio Francisco (RT)',
+      name: 'Gabriel Vinicius',
       phone: '5527988934211',
       events: ['concessionaria_aprovado', 'vistoria_concluido'],
       active: true,
