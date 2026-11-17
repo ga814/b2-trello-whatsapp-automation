@@ -31,6 +31,39 @@
       ],
       "active": true,
       "created_at": "2026-11-17T15:49:51.329Z"
+    },
+    {
+      "id": "cnt_elizangela",
+      "name": "ELIZANGELA - Diretoria",
+      "phone": "5527999532478",
+      "events": [
+        "concessionaria_aprovado",
+        "vistoria_concluido"
+      ],
+      "active": true,
+      "created_at": "2026-11-17T18:10:22.614Z"
+    },
+    {
+      "id": "cnt_henry",
+      "name": "Henry - Vendedor",
+      "phone": "5527997875792",
+      "events": [
+        "concessionaria_aprovado",
+        "vistoria_concluido"
+      ],
+      "active": true,
+      "created_at": "2026-11-17T18:10:22.869Z"
+    },
+    {
+      "id": "cnt_gabriel_diretoria",
+      "name": "Gabriel - Diretoria",
+      "phone": "5527995835404",
+      "events": [
+        "concessionaria_aprovado",
+        "vistoria_concluido"
+      ],
+      "active": true,
+      "created_at": "2026-11-17T18:10:23.507Z"
     }
   ],
   "logs": [],

@@ -52,6 +52,30 @@ const defaultData = {
       events: ['concessionaria_aprovado', 'vistoria_concluido'],
       active: true,
       created_at: new Date().toISOString()
+    },
+    {
+      id: 'cnt_elizangela',
+      name: 'ELIZANGELA - Diretoria',
+      phone: '5527999532478',
+      events: ['concessionaria_aprovado', 'vistoria_concluido'],
+      active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'cnt_henry',
+      name: 'Henry - Vendedor',
+      phone: '5527997875792',
+      events: ['concessionaria_aprovado', 'vistoria_concluido'],
+      active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'cnt_gabriel_diretoria',
+      name: 'Gabriel - Diretoria',
+      phone: '5527995835404',
+      events: ['concessionaria_aprovado', 'vistoria_concluido'],
+      active: true,
+      created_at: new Date().toISOString()
     }
   ],
   logs: [],
