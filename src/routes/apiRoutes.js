@@ -1,21 +1,22 @@
 import express from 'express';
 import { db } from '../db.js';
-import { metaWhatsAppService } from '../services/metaWhatsAppService.js';
+import { unifiedWhatsAppService } from '../services/unifiedWhatsAppService.js';
 import { trelloService } from '../services/trelloService.js';
 import { notificationEngine } from '../services/notificationEngine.js';
 
 export const apiRouter = express.Router();
 
-/**
- * Retorna status geral do sistema e conexões
- */
 apiRouter.get('/status', async (req, res) => {
   const settings = db.getSettings();
   const contacts = db.getContacts();
-  const logs = db.getLogs({ limit: 10 });
 
   const hasTrelloCreds = Boolean(settings.trello_api_key && settings.trello_token);
-  const hasMetaCreds = Boolean(settings.whatsapp_phone_number_id && settings.whatsapp_access_token);
+  const provider = settings.whatsapp_provider || 'zapi';
+  const hasZApi = Boolean(settings.zapi_instance_id && settings.zapi_token);
+  const hasMeta = Boolean(settings.whatsapp_phone_number_id && settings.whatsapp_access_token);
+  const hasEvolution = Boolean(settings.evolution_base_url && settings.evolution_api_key);
+
+  const isConfigured = provider === 'zapi' ? hasZApi : (provider === 'evolution' ? hasEvolution : hasMeta);
 
   res.json({
     system: 'ONLINE',
@@ -34,23 +35,22 @@ apiRouter.get('/status', async (req, res) => {
         webhookId: settings.trello_webhook_id || null
       },
       whatsapp: {
-        provider: 'Meta WhatsApp Cloud API (Oficial)',
-        configured: hasMetaCreds,
-        phoneNumberId: settings.whatsapp_phone_number_id || null
+        provider: provider === 'zapi' ? 'Z-API (QR Code Fácil)' : (provider === 'evolution' ? 'Evolution API (QR Code)' : 'Meta Cloud API Oficial'),
+        providerKey: provider,
+        configured: isConfigured
       }
     }
   });
 });
 
-/**
- * Configurações
- */
 apiRouter.get('/config', (req, res) => {
   const settings = db.getSettings();
-  // Mascara tokens sensíveis
   const masked = { ...settings };
   if (masked.trello_token && masked.trello_token.length > 8) {
     masked.trello_token = `${masked.trello_token.substring(0, 4)}...${masked.trello_token.slice(-4)}`;
+  }
+  if (masked.zapi_token && masked.zapi_token.length > 8) {
+    masked.zapi_token = `${masked.zapi_token.substring(0, 4)}...${masked.zapi_token.slice(-4)}`;
   }
   if (masked.whatsapp_access_token && masked.whatsapp_access_token.length > 8) {
     masked.whatsapp_access_token = `${masked.whatsapp_access_token.substring(0, 6)}...${masked.whatsapp_access_token.slice(-4)}`;
@@ -60,20 +60,13 @@ apiRouter.get('/config', (req, res) => {
 
 apiRouter.post('/config', (req, res) => {
   const updates = req.body;
-  // Não sobrescreve com tokens mascarados caso o usuário não tenha editado
-  if (updates.trello_token && updates.trello_token.includes('...')) {
-    delete updates.trello_token;
-  }
-  if (updates.whatsapp_access_token && updates.whatsapp_access_token.includes('...')) {
-    delete updates.whatsapp_access_token;
-  }
+  if (updates.trello_token && updates.trello_token.includes('...')) delete updates.trello_token;
+  if (updates.zapi_token && updates.zapi_token.includes('...')) delete updates.zapi_token;
+  if (updates.whatsapp_access_token && updates.whatsapp_access_token.includes('...')) delete updates.whatsapp_access_token;
   const saved = db.updateSettings(updates);
   res.json({ success: true, settings: saved });
 });
 
-/**
- * Contatos
- */
 apiRouter.get('/contacts', (req, res) => {
   res.json(db.getContacts());
 });
@@ -103,9 +96,6 @@ apiRouter.delete('/contacts/:id', (req, res) => {
   res.json({ success: true });
 });
 
-/**
- * Histórico de Notificações / Logs
- */
 apiRouter.get('/logs', (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 50;
   const status = req.query.status || null;
@@ -113,9 +103,6 @@ apiRouter.get('/logs', (req, res) => {
   res.json(db.getLogs({ limit, status, search }));
 });
 
-/**
- * Verificação e Registro no Trello
- */
 apiRouter.post('/trello/verify', async (req, res) => {
   const result = await trelloService.verifyConnection();
   res.json(result);
@@ -126,7 +113,7 @@ apiRouter.post('/trello/setup-webhook', async (req, res) => {
     const { callbackUrl } = req.body;
     const url = callbackUrl || db.getSettings().app_public_url;
     if (!url) {
-      return res.status(400).json({ error: 'Informe a URL pública da aplicação (ex: https://meu-app.onrender.com/api/webhooks/trello).' });
+      return res.status(400).json({ error: 'Informe a URL pública da aplicação.' });
     }
     const fullCallback = url.endsWith('/api/webhooks/trello') ? url : `${url.replace(/\/$/, '')}/api/webhooks/trello`;
     const result = await trelloService.setupWebhook(fullCallback);
@@ -136,17 +123,11 @@ apiRouter.post('/trello/setup-webhook', async (req, res) => {
   }
 });
 
-/**
- * Verificação do WhatsApp Meta Cloud API
- */
 apiRouter.post('/whatsapp/verify', async (req, res) => {
-  const result = await metaWhatsAppService.verifyConnection();
+  const result = await unifiedWhatsAppService.verifyConnection();
   res.json(result);
 });
 
-/**
- * Teste Manual de Notificação
- */
 apiRouter.post('/test-notify', async (req, res) => {
   const { phone, name, eventType, clientName } = req.body;
   if (!phone) {

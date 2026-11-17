@@ -15,14 +15,30 @@ if (!fs.existsSync(DATA_DIR)) {
 // Estrutura inicial do banco de dados
 const defaultData = {
   settings: {
-    trello_api_key: process.env.TRELLO_API_KEY || '',
-    trello_token: process.env.TRELLO_TOKEN || '',
+    trello_api_key: process.env.TRELLO_API_KEY || 'ab7fba0f09b59fd590a77635399f9d65',
+    trello_token: process.env.TRELLO_TOKEN || 'ATTA6ad8ccf8f3602ad10b016e77c6b6acc069433d4794ed8196ee3505053463a4beA4762E88',
     trello_board_id: process.env.TRELLO_BOARD_ID || '6a67bc403bcaf1d86f059114',
-    trello_webhook_id: '',
+    trello_webhook_id: '6afc858aed7794afc8c01b54',
+    app_public_url: process.env.APP_PUBLIC_URL || 'https://b2-trello-whatsapp-automation.onrender.com',
+
+    // Provedor ativo de WhatsApp: 'zapi' | 'evolution' | 'meta'
+    whatsapp_provider: 'zapi',
+
+    // Z-API (QR Code rápido)
+    zapi_instance_id: process.env.ZAPI_INSTANCE_ID || '',
+    zapi_token: process.env.ZAPI_TOKEN || '',
+    zapi_client_token: process.env.ZAPI_CLIENT_TOKEN || '',
+
+    // Evolution API (QR Code alternativo)
+    evolution_base_url: process.env.EVOLUTION_BASE_URL || '',
+    evolution_instance_name: process.env.EVOLUTION_INSTANCE_NAME || '',
+    evolution_api_key: process.env.EVOLUTION_API_KEY || '',
+
+    // Meta Cloud API Oficial
     whatsapp_phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
     whatsapp_waba_id: process.env.WHATSAPP_WABA_ID || '',
     whatsapp_access_token: process.env.WHATSAPP_ACCESS_TOKEN || '',
-    app_public_url: process.env.APP_PUBLIC_URL || '',
+
     concessionaria_field_name: 'Concessionária',
     concessionaria_target_value: 'Aprovado',
     vistoria_field_name: 'Vistoria',
@@ -39,10 +55,9 @@ const defaultData = {
     }
   ],
   logs: [],
-  processed_actions: {} // action_id: timestamp
+  processed_actions: {}
 };
 
-// Carrega ou inicializa o banco
 function loadDatabase() {
   try {
     if (!fs.existsSync(DB_FILE)) {
@@ -63,7 +78,6 @@ function loadDatabase() {
   }
 }
 
-// Salva de forma atômica
 function saveDatabase(data) {
   const tempFile = `${DB_FILE}.tmp`;
   fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
@@ -73,7 +87,6 @@ function saveDatabase(data) {
 let dbCache = loadDatabase();
 
 export const db = {
-  // Configurações
   getSettings() {
     return { ...dbCache.settings };
   },
@@ -82,8 +95,6 @@ export const db = {
     saveDatabase(dbCache);
     return { ...dbCache.settings };
   },
-
-  // Contatos
   getContacts() {
     return [...dbCache.contacts];
   },
@@ -120,11 +131,8 @@ export const db = {
     saveDatabase(dbCache);
     return true;
   },
-
-  // Deduplicação & Idempotência
   isActionProcessed(actionId) {
     if (!actionId) return false;
-    // Expira ações mais velhas que 7 dias
     const now = Date.now();
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
     const actionTime = dbCache.processed_actions[actionId];
@@ -138,8 +146,6 @@ export const db = {
     dbCache.processed_actions[actionId] = Date.now();
     saveDatabase(dbCache);
   },
-
-  // Histórico de Notificações / Logs
   getLogs({ limit = 100, status = null, search = null } = {}) {
     let result = [...dbCache.logs];
     if (status) {
@@ -152,7 +158,6 @@ export const db = {
         (l.event_type && l.event_type.toLowerCase().includes(q))
       );
     }
-    // Ordena mais recente primeiro
     result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     return result.slice(0, limit);
   },
@@ -163,7 +168,6 @@ export const db = {
       ...logEntry
     };
     dbCache.logs.unshift(entry);
-    // Limita o histórico a 1000 registros para economia de memória
     if (dbCache.logs.length > 1000) {
       dbCache.logs = dbCache.logs.slice(0, 1000);
     }

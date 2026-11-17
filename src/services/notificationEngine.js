@@ -1,11 +1,8 @@
 import { db } from '../db.js';
-import { metaWhatsAppService } from './metaWhatsAppService.js';
+import { unifiedWhatsAppService } from './unifiedWhatsAppService.js';
 import { trelloService } from './trelloService.js';
 
 export class NotificationEngine {
-  /**
-   * Processa uma ação recebida via Webhook do Trello
-   */
   async processTrelloWebhook(payload) {
     const action = payload?.action;
     if (!action) {
@@ -17,7 +14,7 @@ export class NotificationEngine {
       return { status: 'IGNORED', reason: 'Ação não corresponde às regras de notificação configuradas' };
     }
 
-    // Deduplicação estrita: verifica se esta action específica do Trello já foi processada
+    // Deduplicação estrita por action.id do Trello
     if (db.isActionProcessed(eventData.actionId)) {
       console.log(`[Deduplicação] Action ${eventData.actionId} já foi processada anteriormente. Ignorando.`);
       return { 
@@ -27,10 +24,8 @@ export class NotificationEngine {
       };
     }
 
-    // Marca imediatamente como processada para evitar concorrência de retries do Trello
     db.markActionProcessed(eventData.actionId);
 
-    // Identifica quais contatos devem receber
     const eventKey = eventData.eventType === 'CONCESSIONARIA_APROVADO' 
       ? 'concessionaria_aprovado' 
       : 'vistoria_concluido';
@@ -55,14 +50,13 @@ export class NotificationEngine {
       return { status: 'NO_RECIPIENTS', log };
     }
 
-    // Formata a data atual em horário de Brasília
     const dateFormatted = new Intl.DateTimeFormat('pt-BR', {
       dateStyle: 'short',
       timeStyle: 'short',
       timeZone: 'America/Sao_Paulo'
     }).format(new Date());
 
-    const messageText = metaWhatsAppService.buildNotificationMessage({
+    const messageText = unifiedWhatsAppService.buildNotificationMessage({
       clientName: eventData.clientName,
       eventType: eventData.eventType,
       newStatus: eventData.newStatus,
@@ -70,17 +64,17 @@ export class NotificationEngine {
       dateFormatted
     });
 
-    // Dispara para todos os contatos
     const results = await Promise.allSettled(
       targetContacts.map(async (contact) => {
         try {
-          const res = await metaWhatsAppService.sendMessage(contact.phone, messageText);
+          const res = await unifiedWhatsAppService.sendMessage(contact.phone, messageText);
           return {
             contact_id: contact.id,
             name: contact.name,
             phone: contact.phone,
             status: 'SUCCESS',
-            message_id: res.messageId
+            message_id: res.messageId,
+            provider: res.provider
           };
         } catch (err) {
           return {
@@ -112,7 +106,7 @@ export class NotificationEngine {
       recipients_count: targetContacts.length,
       recipients: recipientSummaries,
       status: finalStatus,
-      error_message: finalStatus === 'FAILED' ? 'Falha no envio para todos os destinatários' : null,
+      error_message: finalStatus === 'FAILED' ? 'Falha no envio para os destinatários' : null,
       action_id: eventData.actionId,
       message_preview: messageText
     });
@@ -125,9 +119,6 @@ export class NotificationEngine {
     };
   }
 
-  /**
-   * Disparo manual de teste pelo Painel Administrativo
-   */
   async sendTestNotification({ phone, name = 'Contato Teste', eventType = 'CONCESSIONARIA_APROVADO', clientName = 'CLIENTE MODELO (TESTE)' }) {
     const dateFormatted = new Intl.DateTimeFormat('pt-BR', {
       dateStyle: 'short',
@@ -135,7 +126,7 @@ export class NotificationEngine {
       timeZone: 'America/Sao_Paulo'
     }).format(new Date());
 
-    const messageText = metaWhatsAppService.buildNotificationMessage({
+    const messageText = unifiedWhatsAppService.buildNotificationMessage({
       clientName,
       eventType,
       newStatus: eventType === 'CONCESSIONARIA_APROVADO' ? 'Aprovado (Simulação)' : 'Concluído (Simulação)',
@@ -144,7 +135,7 @@ export class NotificationEngine {
     });
 
     try {
-      const sendResult = await metaWhatsAppService.sendMessage(phone, messageText);
+      const sendResult = await unifiedWhatsAppService.sendMessage(phone, messageText);
       const log = db.addLog({
         event_type: `TESTE_${eventType}`,
         client_name: clientName,
@@ -155,7 +146,8 @@ export class NotificationEngine {
           name,
           phone,
           status: 'SUCCESS',
-          message_id: sendResult.messageId
+          message_id: sendResult.messageId,
+          provider: sendResult.provider
         }],
         status: 'SUCCESS',
         error_message: null,
@@ -166,6 +158,7 @@ export class NotificationEngine {
       return {
         success: true,
         messageId: sendResult.messageId,
+        provider: sendResult.provider,
         log
       };
     } catch (err) {

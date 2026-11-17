@@ -4,10 +4,17 @@
     "trello_token": "",
     "trello_board_id": "6a67bc403bcaf1d86f059114",
     "trello_webhook_id": "",
+    "app_public_url": "",
+    "whatsapp_provider": "zapi",
+    "zapi_instance_id": "",
+    "zapi_token": "",
+    "zapi_client_token": "",
+    "evolution_base_url": "",
+    "evolution_instance_name": "",
+    "evolution_api_key": "",
     "whatsapp_phone_number_id": "",
     "whatsapp_waba_id": "",
     "whatsapp_access_token": "",
-    "app_public_url": "",
     "concessionaria_field_name": "Concessionária",
     "concessionaria_target_value": "Aprovado",
     "vistoria_field_name": "Vistoria",
@@ -28,6 +35,7 @@
   ],
   "logs": [],
   "processed_actions": {
-    "dedup_test_1794930591356": 1794930591356
+    "dedup_test_1794930591356": 1794930591356,
+    "dedup_test_1794936112954": 1794936112954
   }
 }
