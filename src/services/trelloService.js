@@ -209,6 +209,21 @@ export class TrelloService {
         };
       }
 
+      // Se moveu para a lista "Vistoria"
+      if (targetListName === 'vistoria' || (targetListName.includes('vistoria') && !targetListName.includes('conclu'))) {
+        return {
+          actionId,
+          cardId,
+          clientName,
+          cardUrl,
+          eventType: 'VISTORIA_SOLICITADA',
+          newStatus: data.listAfter.name || 'Vistoria Solicitada',
+          triggerSource: 'LIST_MOVE',
+          prazoExecucao: '5 dias úteis para execução',
+          detail: `Movido de [${data.listBefore?.name || 'Lista'}] para [${data.listAfter.name}]`
+        };
+      }
+
       // Se moveu para a lista "🎉 Concluídos"
       if (targetListName.includes('concluíd') || targetListName.includes('concluid')) {
         return {
@@ -219,6 +234,7 @@ export class TrelloService {
           eventType: 'VISTORIA_CONCLUIDO',
           newStatus: data.listAfter.name || 'Vistoria Concluída',
           triggerSource: 'LIST_MOVE',
+          prazoExecucao: '5 dias úteis para execução',
           detail: `Movido de [${data.listBefore?.name || 'Lista'}] para [${data.listAfter.name}]`
         };
       }
@@ -236,12 +252,71 @@ export class TrelloService {
           eventType: 'VISTORIA_CONCLUIDO',
           newStatus: 'Concluído (Etiqueta)',
           triggerSource: 'LABEL',
+          prazoExecucao: '5 dias úteis para execução',
           detail: `Etiqueta ${data.label.name} adicionada`
         };
       }
     }
 
+    // 4. GATILHO POR COMENTÁRIO (commentCard) - Ex: "Vistoria: 045006474058"
+    if (actionType === 'commentCard' && data.text) {
+      const text = data.text;
+      const lower = text.toLowerCase();
+      if (lower.includes('vistoria') || lower.includes('nota de serviço') || lower.includes('nota de atendimento')) {
+        let nota = '';
+        const match = text.match(/(?:nota(?:\s+de\s+(?:servi[çc]o|atendimento|vistoria))?|vistoria)\s*[:\-=]?\s*\*?\*?([0-9]{6,15})\*?\*?/i) ||
+                      text.match(/\b([0-9]{10,14})\b/);
+        if (match) {
+          nota = match[1];
+        } else {
+          const afterVistoria = text.split(/vistoria/i)[1]?.trim();
+          if (afterVistoria) {
+            nota = afterVistoria.split('\n')[0].replace(/^[:\-\s]+/, '').trim();
+          }
+        }
+
+        return {
+          actionId,
+          cardId,
+          clientName,
+          cardUrl,
+          eventType: 'VISTORIA_SOLICITADA',
+          newStatus: 'Solicitação de Vistoria',
+          triggerSource: 'COMMENT',
+          notaVistoria: nota || null,
+          prazoExecucao: '5 dias úteis para execução',
+          detail: `Comentário no cartão: ${text.substring(0, 100)}`
+        };
+      }
+    }
+
     return null;
+  }
+
+  /**
+   * Busca a última nota de vistoria comentada no cartão
+   */
+  async getLatestVistoriaNoteFromCard(cardId) {
+    if (!cardId) return null;
+    try {
+      const { apiKey, token } = this.getCredentials();
+      const res = await fetch(`${this.apiBaseUrl}/cards/${cardId}/actions?filter=commentCard&limit=5&key=${apiKey}&token=${token}`);
+      if (!res.ok) return null;
+      const comments = await res.json();
+      if (!Array.isArray(comments)) return null;
+
+      for (const c of comments) {
+        const text = c.data?.text || '';
+        if (/vistoria|nota/i.test(text)) {
+          const match = text.match(/(?:nota(?:\s+de\s+(?:servi[çc]o|atendimento|vistoria))?|vistoria)\s*[:\-=]?\s*\*?\*?([0-9]{6,15})\*?\*?/i) ||
+                        text.match(/\b([0-9]{10,14})\b/);
+          if (match) return match[1];
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
 

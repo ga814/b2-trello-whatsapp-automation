@@ -56,12 +56,23 @@ export class NotificationEngine {
       timeZone: 'America/Sao_Paulo'
     }).format(new Date());
 
+    let notaVistoria = eventData.notaVistoria || null;
+    if (!notaVistoria && (eventData.eventType.includes('VISTORIA') || eventData.eventType === 'VISTORIA_CONCLUIDO') && eventData.cardId) {
+      try {
+        notaVistoria = await trelloService.getLatestVistoriaNoteFromCard(eventData.cardId);
+      } catch (err) {
+        console.warn('Erro ao buscar nota de vistoria no cartão:', err.message);
+      }
+    }
+
     const messageText = unifiedWhatsAppService.buildNotificationMessage({
       clientName: eventData.clientName,
       eventType: eventData.eventType,
       newStatus: eventData.newStatus,
       cardUrl: eventData.cardUrl,
-      dateFormatted
+      dateFormatted,
+      notaVistoria,
+      prazoExecucao: eventData.prazoExecucao || '5 dias úteis para execução'
     });
 
     const results = await Promise.allSettled(
@@ -119,19 +130,22 @@ export class NotificationEngine {
     };
   }
 
-  async sendTestNotification({ phone, name = 'Contato Teste', eventType = 'CONCESSIONARIA_APROVADO', clientName = 'CLIENTE MODELO (TESTE)' }) {
+  async sendTestNotification({ phone, name = 'Contato Teste', eventType = 'CONCESSIONARIA_APROVADO', clientName = 'CLIENTE MODELO (TESTE)', notaVistoria = '045006474058' }) {
     const dateFormatted = new Intl.DateTimeFormat('pt-BR', {
       dateStyle: 'short',
       timeStyle: 'short',
       timeZone: 'America/Sao_Paulo'
     }).format(new Date());
 
+    const isVistoria = eventType.includes('VISTORIA');
     const messageText = unifiedWhatsAppService.buildNotificationMessage({
       clientName,
       eventType,
-      newStatus: eventType === 'CONCESSIONARIA_APROVADO' ? 'Aprovado (Simulação)' : 'Concluído (Simulação)',
+      newStatus: eventType === 'CONCESSIONARIA_APROVADO' ? 'Aprovado (Simulação)' : 'Vistoria Solicitada (Simulação)',
       cardUrl: 'https://trello.com/b/88Ail8v8/projetos',
-      dateFormatted
+      dateFormatted,
+      notaVistoria: isVistoria ? notaVistoria : null,
+      prazoExecucao: '5 dias úteis para execução'
     });
 
     try {

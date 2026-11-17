@@ -237,26 +237,44 @@ export class UnifiedWhatsAppService {
     return { valid: false, error: 'Provedor não suportado' };
   }
 
-  buildNotificationMessage({ clientName, eventType, newStatus, cardUrl, dateFormatted }) {
+  buildNotificationMessage({ clientName, eventType, newStatus, cardUrl, dateFormatted, notaVistoria, prazoExecucao }) {
     const isConcessionaria = eventType === 'CONCESSIONARIA_APROVADO';
+    const isVistoriaSolicitada = eventType === 'VISTORIA_SOLICITADA';
     const headerEmoji = isConcessionaria ? '⚡' : '🔍';
-    const title = isConcessionaria 
-      ? 'PROJETO APROVADO NA CONCESSIONÁRIA' 
-      : 'VISTORIA CONCLUÍDA COM SUCESSO';
+    
+    let title = 'VISTORIA CONCLUÍDA COM SUCESSO';
+    if (isConcessionaria) {
+      title = 'PROJETO APROVADO NA CONCESSIONÁRIA';
+    } else if (isVistoriaSolicitada || notaVistoria) {
+      title = 'SOLICITAÇÃO DE VISTORIA NA CONCESSIONÁRIA';
+    }
 
-    return [
+    const lines = [
       `*${headerEmoji} B2 ENERGIA SOLAR | NOTIFICAÇÃO*`,
       ``,
       `*Evento:* ${title}`,
       `*Cliente:* ${clientName}`,
-      `*Status Atual:* ✅ ${newStatus}`,
+      `*Status Atual:* ✅ ${newStatus}`
+    ];
+
+    if (notaVistoria) {
+      lines.push(`*Nota de Vistoria / Serviço:* 📄 ${notaVistoria}`);
+    }
+
+    if (!isConcessionaria) {
+      lines.push(`*Prazo da Concessionária:* ⏳ ${prazoExecucao || '5 dias úteis para execução'}`);
+    }
+
+    lines.push(
       `*Data/Hora:* 📅 ${dateFormatted}`,
       ``,
       `🔗 *Acessar Cartão no Trello:*`,
       `${cardUrl}`,
       ``,
       `_Sistema automatizado de monitoramento B2 Energia Solar_`
-    ].join('\n');
+    );
+
+    return lines.join('\n');
   }
 }
 
