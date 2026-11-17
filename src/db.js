@@ -170,6 +170,24 @@ export const db = {
     dbCache.processed_actions[actionId] = Date.now();
     saveDatabase(dbCache);
   },
+  isCardEventProcessed(cardId, eventCategory, cooldownMinutes = 15) {
+    if (!cardId || !eventCategory) return false;
+    const key = `card_${cardId}_${eventCategory.toLowerCase()}`;
+    const lastTime = dbCache.processed_actions[key];
+    if (lastTime) {
+      const elapsed = Date.now() - lastTime;
+      if (elapsed < cooldownMinutes * 60 * 1000) {
+        return true;
+      }
+    }
+    return false;
+  },
+  markCardEventProcessed(cardId, eventCategory) {
+    if (!cardId || !eventCategory) return;
+    const key = `card_${cardId}_${eventCategory.toLowerCase()}`;
+    dbCache.processed_actions[key] = Date.now();
+    saveDatabase(dbCache);
+  },
   getLogs({ limit = 100, status = null, search = null } = {}) {
     let result = [...dbCache.logs];
     if (status) {

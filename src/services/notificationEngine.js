@@ -14,7 +14,7 @@ export class NotificationEngine {
       return { status: 'IGNORED', reason: 'Ação não corresponde às regras de notificação configuradas' };
     }
 
-    // Deduplicação estrita por action.id do Trello
+    // 1. Deduplicação estrita por action.id do Trello
     if (db.isActionProcessed(eventData.actionId)) {
       console.log(`[Deduplicação] Action ${eventData.actionId} já foi processada anteriormente. Ignorando.`);
       return { 
@@ -24,7 +24,22 @@ export class NotificationEngine {
       };
     }
 
+    // 2. Anti-duplicação inteligente por Cartão + Evento (Janela de 15 minutos)
+    // Evita disparo duplo se o usuário comentar no cartão e em seguida mover de lista!
+    const eventCategory = eventData.eventType.includes('VISTORIA') ? 'vistoria' : 'concessionaria';
+    if (eventData.cardId && db.isCardEventProcessed(eventData.cardId, eventCategory, 15)) {
+      console.log(`[Anti-Duplicação] Notificação de ${eventCategory} já foi disparada para o cartão ${eventData.cardId} nos últimos 15 minutos. Ignorando disparo redundante.`);
+      return {
+        status: 'CARD_COOLDOWN_IGNORED',
+        cardId: eventData.cardId,
+        message: `Disparo ignorado: notificação de ${eventCategory} já enviada recentemente para este cartão.`
+      };
+    }
+
     db.markActionProcessed(eventData.actionId);
+    if (eventData.cardId) {
+      db.markCardEventProcessed(eventData.cardId, eventCategory);
+    }
 
     const eventKey = eventData.eventType === 'CONCESSIONARIA_APROVADO' 
       ? 'concessionaria_aprovado' 
