@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "trello_api_key": "",
+    "trello_token": "",
+    "trello_board_id": "6a67bc403bcaf1d86f059114",
+    "trello_webhook_id": "",
+    "whatsapp_phone_number_id": "",
+    "whatsapp_waba_id": "",
+    "whatsapp_access_token": "",
+    "app_public_url": "",
+    "concessionaria_field_name": "Concessionária",
+    "concessionaria_target_value": "Aprovado",
+    "vistoria_field_name": "Vistoria",
+    "vistoria_target_value": "Concluído"
+  },
+  "contacts": [
+    {
+      "id": "contact_default_1",
+      "name": "Nicácio Francisco (RT)",
+      "phone": "5527988934211",
+      "events": [
+        "concessionaria_aprovado",
+        "vistoria_concluido"
+      ],
+      "active": true,
+      "created_at": "2026-11-17T15:49:51.329Z"
+    }
+  ],
+  "logs": [],
+  "processed_actions": {
+    "dedup_test_1794930591356": 1794930591356
+  }
+}

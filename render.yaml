@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: b2-trello-whatsapp-automation
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: TRELLO_BOARD_ID
+        value: 6a67bc403bcaf1d86f059114
+      - key: TRELLO_API_KEY
+        sync: false
+      - key: TRELLO_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_WABA_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: APP_PUBLIC_URL
+        sync: false

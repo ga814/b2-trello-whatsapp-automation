@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B2 Energia Solar | Automação Trello & WhatsApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            b2: {
+              orange: '#F37021',
+              'orange-dark': '#D85A10',
+              'orange-light': '#FFF5EB',
+              blue: '#0A2540',
+              'blue-light': '#1E3A5F',
+              gray: '#F8FAFC',
+              border: '#E2E8F0'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #F8FAFC; color: #1E293B; }
+    .tab-btn.active {
+      color: #F37021;
+      border-bottom-color: #F37021;
+      font-weight: 700;
+    }
+    .badge-success { background-color: #DEF7EC; color: #03543F; }
+    .badge-failed { background-color: #FDE8E8; color: #9B1C1C; }
+    .badge-partial { background-color: #FEF08A; color: #713F12; }
+    .badge-ignored { background-color: #E2E8F0; color: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+  <!-- HEADER -->
+  <header class="bg-b2-blue text-white shadow-md border-b-4 border-b2-orange">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-b2-orange flex items-center justify-center text-white font-black text-xl shadow-lg">
+          ☀️
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">B2 ENERGIA SOLAR</h1>
+          <p class="text-xs text-slate-300 font-medium">Sistema de Automação 24/7 | Trello ➔ WhatsApp Meta Cloud API</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span id="systemStatusBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+          Sistema Online
+        </span>
+        <button onclick="refreshAll()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          Atualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- TABS DE NAVEGAÇÃO -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-700/60 flex space-x-8 text-sm">
+      <button onclick="switchTab('tab-overview')" id="nav-overview" class="tab-btn active py-3.5 border-b-2 border-transparent text-slate-300 hover:text-white transition">Visão Geral</button>
+      <button onclick="switchTab('tab-contacts')" id="nav-contacts" class="tab-btn py-3.5 border-b-2 border-transparent text-slate-300 hover:text-white transition">Contatos & Notificações</button>
+      <button onclick="switchTab('tab-logs')" id="nav-logs" class="tab-btn py-3.5 border-b-2 border-transparent text-slate-300 hover:text-white transition">Histórico & Logs</button>
+      <button onclick="switchTab('tab-settings')" id="nav-settings" class="tab-btn py-3.5 border-b-2 border-transparent text-slate-300 hover:text-white transition">Integrações (Trello & Meta)</button>
+      <button onclick="switchTab('tab-test')" id="nav-test" class="tab-btn py-3.5 border-b-2 border-transparent text-slate-300 hover:text-white transition">Testador Manual</button>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- TAB 1: VISÃO GERAL -->
+    <section id="tab-overview" class="space-y-6">
+      <!-- CARDS DE MÉTRICAS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Disparos Totais</p>
+            <h3 id="statTotalDispatches" class="text-2xl font-bold text-b2-blue mt-1">0</h3>
+            <p class="text-xs text-slate-400 mt-1">Notificações processadas</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-orange-50 text-b2-orange flex items-center justify-center text-xl font-bold">
+            ⚡
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contatos Ativos</p>
+            <h3 id="statActiveContacts" class="text-2xl font-bold text-b2-blue mt-1">0</h3>
+            <p class="text-xs text-slate-400 mt-1">Recebendo alertas</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-blue-50 text-b2-blue flex items-center justify-center text-xl font-bold">
+            👥
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Taxa de Sucesso</p>
+            <h3 id="statSuccessRate" class="text-2xl font-bold text-emerald-600 mt-1">100%</h3>
+            <p class="text-xs text-slate-400 mt-1">Meta WhatsApp Cloud</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+            ✓
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Falhas Recentes</p>
+            <h3 id="statFailures" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+            <p class="text-xs text-slate-400 mt-1">Últimos registros</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
+            ✕
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS DAS CONEXÕES -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center space-x-3">
+              <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">T</span>
+              <div>
+                <h4 class="font-bold text-b2-blue">Integração Trello</h4>
+                <p class="text-xs text-slate-500">Monitoramento do quadro "Projetos"</p>
+              </div>
+            </div>
+            <span id="trelloStatusPill" class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600">Verificando...</span>
+          </div>
+          <div class="mt-4 space-y-2 text-xs">
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>ID do Quadro:</span>
+              <span class="font-mono font-medium text-slate-800" id="overviewBoardId">6a67bc403bcaf1d86f059114</span>
+            </div>
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>Webhook Registrado:</span>
+              <span class="font-mono font-medium" id="overviewWebhookStatus">-</span>
+            </div>
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>Gatilhos Ativos:</span>
+              <span class="font-medium text-b2-orange">Concessionária (Aprovado) e Vistoria (Concluído)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center space-x-3">
+              <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">W</span>
+              <div>
+                <h4 class="font-bold text-b2-blue">Meta WhatsApp Cloud API</h4>
+                <p class="text-xs text-slate-500">Serviço Oficial 24/7 sem celular conectado</p>
+              </div>
+            </div>
+            <span id="metaStatusPill" class="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600">Verificando...</span>
+          </div>
+          <div class="mt-4 space-y-2 text-xs">
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>Phone Number ID:</span>
+              <span class="font-mono font-medium text-slate-800" id="overviewPhoneId">-</span>
+            </div>
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>Nome Verificado:</span>
+              <span class="font-medium text-slate-800" id="overviewVerifiedName">B2 Energia Solar</span>
+            </div>
+            <div class="flex justify-between py-1 text-slate-600">
+              <span>Limite de Mensagens:</span>
+              <span class="font-medium text-emerald-600">1.000 mensagens gratuitas/mês</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÚLTIMAS ATIVIDADES -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <h4 class="font-bold text-b2-blue mb-4">Últimas Notificações Disparadas</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Data/Hora</th>
+                <th class="py-3 px-4">Cliente / Projeto</th>
+                <th class="py-3 px-4">Evento</th>
+                <th class="py-3 px-4">Destinatários</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="overviewRecentLogs" class="divide-y divide-slate-100 text-xs">
+              <tr>
+                <td colspan="5" class="py-4 text-center text-slate-400">Nenhum evento registrado ainda.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CONTATOS -->
+    <section id="tab-contacts" class="space-y-6 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h3 class="text-lg font-bold text-b2-blue">Contatos e Regras de Notificação</h3>
+          <p class="text-xs text-slate-500 mt-1">Defina quais números receberão as notificações e configure os eventos para cada um.</p>
+        </div>
+        <button onclick="openContactModal()" class="px-4 py-2.5 rounded-lg text-xs font-semibold bg-b2-orange hover:bg-b2-orange-dark text-white transition flex items-center gap-2 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          Adicionar Novo Contato
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-200">
+              <tr>
+                <th class="py-3.5 px-4">Nome / Função</th>
+                <th class="py-3.5 px-4">WhatsApp (E.164)</th>
+                <th class="py-3.5 px-4">Eventos Inscritos</th>
+                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="contactsTableBody" class="divide-y divide-slate-100 text-xs">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: LOGS E HISTÓRICO -->
+    <section id="tab-logs" class="space-y-6 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h3 class="text-lg font-bold text-b2-blue">Histórico e Auditoria de Envios</h3>
+          <p class="text-xs text-slate-500 mt-1">Acompanhe todos os disparos, confirmações de entrega da Meta e diagnóstico de falhas.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <select id="logStatusFilter" onchange="loadLogs()" class="border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 bg-white">
+            <option value="">Todos os Status</option>
+            <option value="SUCCESS">Sucesso</option>
+            <option value="FAILED">Falhas</option>
+            <option value="PARTIAL">Parcial</option>
+          </select>
+          <input type="text" id="logSearchInput" oninput="loadLogs()" placeholder="Buscar por cliente..." class="border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 w-48">
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-200">
+              <tr>
+                <th class="py-3.5 px-4">Data/Hora</th>
+                <th class="py-3.5 px-4">Cliente</th>
+                <th class="py-3.5 px-4">Evento</th>
+                <th class="py-3.5 px-4">Destinatários</th>
+                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4 text-right">Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody" class="divide-y divide-slate-100 text-xs">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CONFIGURAÇÕES -->
+    <section id="tab-settings" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- TRELLO CONFIG -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+            <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-black">T</div>
+            <div>
+              <h4 class="font-bold text-b2-blue">Configuração Trello API</h4>
+              <p class="text-xs text-slate-500">Credenciais para Webhooks em tempo real</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">API Key do Trello</label>
+              <input type="text" id="cfgTrelloKey" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">API Token do Trello</label>
+              <input type="password" id="cfgTrelloToken" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Gerar em: <a href="https://trello.com/power-ups/admin" target="_blank" class="text-b2-orange underline">trello.com/power-ups/admin</a></span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">ID do Quadro (Board ID)</label>
+              <input type="text" id="cfgTrelloBoardId" value="6a67bc403bcaf1d86f059114" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Quadro "Projetos" da B2 Energia Solar</span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">URL Pública da Aplicação (Para Webhook)</label>
+              <input type="text" id="cfgAppPublicUrl" placeholder="https://meu-servidor.onrender.com" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+              <span class="text-[10px] text-slate-400 mt-0.5 block">URL HTTPS pública do Render, Railway ou ngrok</span>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+            <button onclick="saveSettings()" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-b2-blue hover:bg-b2-blue-light text-white transition">Salvar Credenciais</button>
+            <button onclick="verifyTrello()" class="px-3.5 py-2 rounded-lg text-xs font-medium border border-slate-300 hover:bg-slate-50 text-slate-700 transition">Testar Conexão Trello</button>
+            <button onclick="setupWebhook()" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition">Registrar Webhook</button>
+          </div>
+        </div>
+
+        <!-- META WHATSAPP CONFIG -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+            <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">W</div>
+            <div>
+              <h4 class="font-bold text-b2-blue">Meta WhatsApp Cloud API</h4>
+              <p class="text-xs text-slate-500">Credenciais oficiais da Meta Developers</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Phone Number ID</label>
+              <input type="text" id="cfgMetaPhoneId" placeholder="Ex: 104829182910291" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">WhatsApp Business Account ID (WABA ID)</label>
+              <input type="text" id="cfgMetaWabaId" placeholder="Ex: 9283918291829" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Token de Acesso Permanente (System User Token)</label>
+              <input type="password" id="cfgMetaToken" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Gerado em Meta Business Manager com permissão <code>whatsapp_business_messaging</code></span>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+            <button onclick="saveSettings()" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-b2-blue hover:bg-b2-blue-light text-white transition">Salvar Credenciais</button>
+            <button onclick="verifyWhatsApp()" class="px-3.5 py-2 rounded-lg text-xs font-medium border border-slate-300 hover:bg-slate-50 text-slate-700 transition">Testar Conexão Meta</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 5: TESTADOR MANUAL -->
+    <section id="tab-test" class="space-y-6 hidden">
+      <div class="max-w-2xl mx-auto bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+        <div>
+          <h3 class="text-lg font-bold text-b2-blue">Disparo Manual de Teste</h3>
+          <p class="text-xs text-slate-500 mt-1">Envie uma notificação real diretamente pelo WhatsApp para validar o recebimento no seu celular.</p>
+        </div>
+
+        <div class="space-y-4 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Número do WhatsApp (com DDD)</label>
+            <input type="text" id="testPhone" value="5527988934211" placeholder="Ex: 5527988934211" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nome do Destinatário</label>
+            <input type="text" id="testName" value="Nicácio Francisco" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nome do Cliente / Projeto Simulado</label>
+            <input type="text" id="testClientName" value="MIRIAN PAMPOLIM BATISTA" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tipo de Evento Simulado</label>
+            <select id="testEventType" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
+              <option value="CONCESSIONARIA_APROVADO">⚡ Concessionária Aprovado</option>
+              <option value="VISTORIA_CONCLUIDO">🔍 Vistoria Concluído</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          <p class="font-semibold text-slate-800 mb-1">Preview da Mensagem que será enviada:</p>
+          <pre id="testPreviewBox" class="font-sans whitespace-pre-wrap text-slate-700 leading-relaxed bg-white p-3 rounded border border-slate-200"></pre>
+        </div>
+
+        <button onclick="sendTestNotification()" class="w-full py-3 rounded-lg text-xs font-bold bg-b2-orange hover:bg-b2-orange-dark text-white transition shadow-md flex items-center justify-center gap-2">
+          <span>📲 Enviar Notificação de Teste no WhatsApp</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: NOVO / EDITAR CONTATO -->
+  <div id="contactModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 id="modalContactTitle" class="font-bold text-b2-blue text-base">Adicionar Contato</h3>
+        <button onclick="closeContactModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <input type="hidden" id="modalContactId">
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nome Completo / Cargo</label>
+          <input type="text" id="modalContactName" placeholder="Ex: Nicácio Francisco (Responsável Técnico)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Número do WhatsApp (DDD + Número)</label>
+          <input type="text" id="modalContactPhone" placeholder="Ex: 27988934211" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-2">Eventos que este contato deve receber:</label>
+          <div class="space-y-2">
+            <label class="flex items-center space-x-2 text-slate-700">
+              <input type="checkbox" id="modalEvtConcessionaria" class="rounded text-b2-orange focus:ring-b2-orange">
+              <span>⚡ <strong>Concessionária Aprovado</strong></span>
+            </label>
+            <label class="flex items-center space-x-2 text-slate-700">
+              <input type="checkbox" id="modalEvtVistoria" class="rounded text-b2-orange focus:ring-b2-orange">
+              <span>🔍 <strong>Vistoria Concluído</strong></span>
+            </label>
+          </div>
+        </div>
+        <div class="pt-2">
+          <label class="flex items-center space-x-2 text-slate-700">
+            <input type="checkbox" id="modalContactActive" checked class="rounded text-b2-orange focus:ring-b2-orange">
+            <span>Contato Ativo (recebendo notificações)</span>
+          </label>
+        </div>
+      </div>
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeContactModal()" class="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button onclick="saveContact()" class="px-4 py-2 rounded-lg text-xs font-bold bg-b2-orange hover:bg-b2-orange-dark text-white">Salvar Contato</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DO LOG -->
+  <div id="logDetailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-b2-blue text-base">Detalhes da Notificação</h3>
+        <button onclick="closeLogModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <div id="logDetailContent" class="space-y-3 text-xs font-mono bg-slate-50 p-4 rounded-lg overflow-x-auto text-slate-700"></div>
+    </div>
+  </div>
+
+  <script>
+    // ESTADO LOCAL
+    let currentContacts = [];
+    let currentLogs = [];
+    let currentSettings = {};
+
+    // NAVEGAÇÃO DE ABAS
+    function switchTab(tabId) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const activeNav = document.getElementById(tabId.replace('tab-', 'nav-'));
+      if (activeNav) activeNav.classList.add('active');
+
+      if (tabId === 'tab-test') updateTestPreview();
+    }
+
+    // TOASTS DE FEEDBACK
+    function showToast(message, type = 'info') {
+      const c = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-b2-blue');
+      toast.className = `${bg} text-white px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg transition-all transform duration-200 flex items-center space-x-2`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ')}</span><span>${message}</span>`;
+      c.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 200);
+      }, 3500);
+    }
+
+    // CARREGAMENTO INICIAL E ATUALIZAÇÃO
+    async function refreshAll() {
+      await Promise.all([loadStatus(), loadContacts(), loadLogs(), loadSettings()]);
+      showToast('Dados atualizados com sucesso.', 'info');
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        document.getElementById('statTotalDispatches').textContent = data.stats.totalNotificationsSent;
+        document.getElementById('statActiveContacts').textContent = data.stats.activeContacts;
+        document.getElementById('statFailures').textContent = data.stats.recentFailures;
+
+        // Trello Status
+        const trelloPill = document.getElementById('trelloStatusPill');
+        if (data.integrations.trello.configured) {
+          trelloPill.textContent = 'Configurado';
+          trelloPill.className = 'px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700';
+        } else {
+          trelloPill.textContent = 'Pendente';
+          trelloPill.className = 'px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700';
+        }
+
+        // Meta Status
+        const metaPill = document.getElementById('metaStatusPill');
+        if (data.integrations.whatsapp.configured) {
+          metaPill.textContent = 'Conectado';
+          metaPill.className = 'px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700';
+        } else {
+          metaPill.textContent = 'Token Ausente';
+          metaPill.className = 'px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700';
+        }
+
+        document.getElementById('overviewBoardId').textContent = data.integrations.trello.boardId || '6a67bc403bcaf1d86f059114';
+        document.getElementById('overviewWebhookStatus').textContent = data.integrations.trello.webhookId ? 'Ativo 24/7' : 'Não registrado';
+        document.getElementById('overviewPhoneId').textContent = data.integrations.whatsapp.phoneNumberId || 'Aguardando configuração';
+      } catch (err) {
+        console.error('Erro ao carregar status:', err);
+      }
+    }
+
+    async function loadContacts() {
+      try {
+        const res = await fetch('/api/contacts');
+        currentContacts = await res.json();
+        renderContacts();
+      } catch (err) {
+        console.error('Erro ao carregar contatos:', err);
+      }
+    }
+
+    function renderContacts() {
+      const tbody = document.getElementById('contactsTableBody');
+      if (!currentContacts.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Nenhum contato cadastrado. Clique em "Adicionar Novo Contato".</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = currentContacts.map(c => `
+        <tr class="hover:bg-slate-50/60 transition">
+          <td class="py-3 px-4 font-semibold text-slate-800">${c.name}</td>
+          <td class="py-3 px-4 font-mono text-slate-600">${c.phone}</td>
+          <td class="py-3 px-4">
+            <div class="flex flex-wrap gap-1">
+              ${(c.events || []).map(e => `
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${e === 'concessionaria_aprovado' ? 'bg-orange-100 text-b2-orange' : 'bg-blue-100 text-blue-700'}">
+                  ${e === 'concessionaria_aprovado' ? '⚡ Concessionária' : '🔍 Vistoria'}
+                </span>
+              `).join('')}
+            </div>
+          </td>
+          <td class="py-3 px-4">
+            <button onclick="toggleContactActive('${c.id}', ${!c.active})" class="px-2 py-1 rounded-full text-[11px] font-semibold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+              ${c.active ? 'Ativo' : 'Inativo'}
+            </button>
+          </td>
+          <td class="py-3 px-4 text-right space-x-2">
+            <button onclick="editContact('${c.id}')" class="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+            <button onclick="deleteContact('${c.id}')" class="text-rose-600 hover:text-rose-800 font-medium">Excluir</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadLogs() {
+      try {
+        const status = document.getElementById('logStatusFilter').value;
+        const search = document.getElementById('logSearchInput').value;
+        const query = new URLSearchParams({ limit: 100 });
+        if (status) query.append('status', status);
+        if (search) query.append('search', search);
+
+        const res = await fetch(`/api/logs?${query.toString()}`);
+        currentLogs = await res.json();
+        renderLogs();
+        renderOverviewLogs();
+      } catch (err) {
+        console.error('Erro ao carregar logs:', err);
+      }
+    }
+
+    function renderLogs() {
+      const tbody = document.getElementById('logsTableBody');
+      if (!currentLogs.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">Nenhum registro encontrado.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = currentLogs.map(l => {
+        const dateStr = new Date(l.timestamp).toLocaleString('pt-BR');
+        const badgeClass = l.status === 'SUCCESS' ? 'badge-success' : (l.status === 'FAILED' ? 'badge-failed' : 'badge-partial');
+        return `
+          <tr class="hover:bg-slate-50/60 transition">
+            <td class="py-3 px-4 text-slate-500">${dateStr}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${l.client_name || '-'}</td>
+            <td class="py-3 px-4 font-medium text-slate-700">${l.event_type}</td>
+            <td class="py-3 px-4 text-slate-600">${l.recipients_count || 0} contato(s)</td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold ${badgeClass}">
+                ${l.status === 'SUCCESS' ? 'Sucesso' : (l.status === 'FAILED' ? 'Falha' : 'Parcial')}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="showLogDetail('${l.id}')" class="text-b2-orange hover:underline font-semibold">Ver Detalhes</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderOverviewLogs() {
+      const tbody = document.getElementById('overviewRecentLogs');
+      const recents = currentLogs.slice(0, 5);
+      if (!recents.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400">Nenhum evento registrado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = recents.map(l => {
+        const dateStr = new Date(l.timestamp).toLocaleString('pt-BR');
+        const badgeClass = l.status === 'SUCCESS' ? 'badge-success' : (l.status === 'FAILED' ? 'badge-failed' : 'badge-partial');
+        return `
+          <tr>
+            <td class="py-2.5 px-4 text-slate-500">${dateStr}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-800">${l.client_name || '-'}</td>
+            <td class="py-2.5 px-4 text-slate-700">${l.event_type}</td>
+            <td class="py-2.5 px-4 text-slate-600">${l.recipients_count || 0}</td>
+            <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${l.status}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/config');
+        currentSettings = await res.json();
+        document.getElementById('cfgTrelloKey').value = currentSettings.trello_api_key || '';
+        document.getElementById('cfgTrelloToken').value = currentSettings.trello_token || '';
+        document.getElementById('cfgTrelloBoardId').value = currentSettings.trello_board_id || '6a67bc403bcaf1d86f059114';
+        document.getElementById('cfgAppPublicUrl').value = currentSettings.app_public_url || '';
+
+        document.getElementById('cfgMetaPhoneId').value = currentSettings.whatsapp_phone_number_id || '';
+        document.getElementById('cfgMetaWabaId').value = currentSettings.whatsapp_waba_id || '';
+        document.getElementById('cfgMetaToken').value = currentSettings.whatsapp_access_token || '';
+      } catch (err) {
+        console.error('Erro ao carregar configurações:', err);
+      }
+    }
+
+    async function saveSettings() {
+      const payload = {
+        trello_api_key: document.getElementById('cfgTrelloKey').value.trim(),
+        trello_token: document.getElementById('cfgTrelloToken').value.trim(),
+        trello_board_id: document.getElementById('cfgTrelloBoardId').value.trim(),
+        app_public_url: document.getElementById('cfgAppPublicUrl').value.trim(),
+        whatsapp_phone_number_id: document.getElementById('cfgMetaPhoneId').value.trim(),
+        whatsapp_waba_id: document.getElementById('cfgMetaWabaId').value.trim(),
+        whatsapp_access_token: document.getElementById('cfgMetaToken').value.trim()
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Credenciais salvas com sucesso!', 'success');
+          loadStatus();
+        }
+      } catch (err) {
+        showToast(`Erro ao salvar: ${err.message}`, 'error');
+      }
+    }
+
+    async function verifyTrello() {
+      showToast('Testando conexão com Trello API...', 'info');
+      try {
+        const res = await fetch('/api/trello/verify', { method: 'POST' });
+        const data = await res.json();
+        if (data.valid) {
+          showToast(`Conectado ao Trello! Quadro: "${data.boardName}"`, 'success');
+        } else {
+          showToast(`Falha Trello: ${data.error || 'Credenciais inválidas'}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro ao testar Trello: ${err.message}`, 'error');
+      }
+    }
+
+    async function verifyWhatsApp() {
+      showToast('Testando conexão com Meta Graph API...', 'info');
+      try {
+        const res = await fetch('/api/whatsapp/verify', { method: 'POST' });
+        const data = await res.json();
+        if (data.valid) {
+          showToast(`Meta WhatsApp Conectado! Número: ${data.display_phone_number || data.verified_name}`, 'success');
+        } else {
+          showToast(`Falha Meta: ${data.error || 'Token ou Phone ID inválido'}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro ao testar WhatsApp: ${err.message}`, 'error');
+      }
+    }
+
+    async function setupWebhook() {
+      const url = document.getElementById('cfgAppPublicUrl').value.trim();
+      if (!url) {
+        showToast('Preencha a URL Pública da Aplicação antes de registrar o Webhook.', 'error');
+        return;
+      }
+      showToast('Registrando Webhook no Trello...', 'info');
+      try {
+        const res = await fetch('/api/trello/setup-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callbackUrl: url })
+        });
+        const data = await res.json();
+        if (data.webhookId) {
+          showToast(`Webhook Trello ATIVO! ID: ${data.webhookId}`, 'success');
+          loadStatus();
+        } else {
+          showToast(`Erro ao registrar: ${data.error || JSON.stringify(data)}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro: ${err.message}`, 'error');
+      }
+    }
+
+    // MODAL DE CONTATOS
+    function openContactModal(contact = null) {
+      document.getElementById('modalContactId').value = contact ? contact.id : '';
+      document.getElementById('modalContactTitle').textContent = contact ? 'Editar Contato' : 'Adicionar Novo Contato';
+      document.getElementById('modalContactName').value = contact ? contact.name : '';
+      document.getElementById('modalContactPhone').value = contact ? contact.phone : '';
+      
+      const evts = contact ? (contact.events || []) : ['concessionaria_aprovado', 'vistoria_concluido'];
+      document.getElementById('modalEvtConcessionaria').checked = evts.includes('concessionaria_aprovado');
+      document.getElementById('modalEvtVistoria').checked = evts.includes('vistoria_concluido');
+      document.getElementById('modalContactActive').checked = contact ? (contact.active !== false) : true;
+
+      document.getElementById('contactModal').classList.remove('hidden');
+    }
+
+    function closeContactModal() {
+      document.getElementById('contactModal').classList.add('hidden');
+    }
+
+    async function saveContact() {
+      const id = document.getElementById('modalContactId').value;
+      const name = document.getElementById('modalContactName').value.trim();
+      const phone = document.getElementById('modalContactPhone').value.trim();
+      const events = [];
+      if (document.getElementById('modalEvtConcessionaria').checked) events.push('concessionaria_aprovado');
+      if (document.getElementById('modalEvtVistoria').checked) events.push('vistoria_concluido');
+      const active = document.getElementById('modalContactActive').checked;
+
+      if (!name || !phone) {
+        showToast('Nome e telefone são obrigatórios.', 'error');
+        return;
+      }
+
+      const method = id ? 'PUT' : 'POST';
+      const endpoint = id ? `/api/contacts/${id}` : '/api/contacts';
+
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, events, active })
+        });
+        if (res.ok) {
+          showToast('Contato salvo com sucesso!', 'success');
+          closeContactModal();
+          loadContacts();
+          loadStatus();
+        } else {
+          const err = await res.json();
+          showToast(`Erro: ${err.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro ao salvar: ${err.message}`, 'error');
+      }
+    }
+
+    function editContact(id) {
+      const contact = currentContacts.find(c => c.id === id);
+      if (contact) openContactModal(contact);
+    }
+
+    async function deleteContact(id) {
+      if (!confirm('Deseja realmente remover este contato das notificações?')) return;
+      try {
+        const res = await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Contato removido!', 'success');
+          loadContacts();
+          loadStatus();
+        }
+      } catch (err) {
+        showToast(`Erro ao excluir: ${err.message}`, 'error');
+      }
+    }
+
+    async function toggleContactActive(id, newActive) {
+      try {
+        await fetch(`/api/contacts/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: newActive })
+        });
+        loadContacts();
+        loadStatus();
+      } catch (err) {
+        showToast('Erro ao atualizar status', 'error');
+      }
+    }
+
+    // TESTADOR MANUAL
+    function updateTestPreview() {
+      const client = document.getElementById('testClientName').value || 'CLIENTE';
+      const type = document.getElementById('testEventType').value;
+      const isConc = type === 'CONCESSIONARIA_APROVADO';
+      const title = isConc ? 'PROJETO APROVADO NA CONCESSIONÁRIA' : 'VISTORIA CONCLUÍDA COM SUCESSO';
+      const emoji = isConc ? '⚡' : '🔍';
+
+      const preview = `*${emoji} B2 ENERGIA SOLAR | NOTIFICAÇÃO*\n\n*Evento:* ${title}\n*Cliente:* ${client}\n*Status Atual:* ✅ ${isConc ? 'Aprovado' : 'Concluído'}\n*Data/Hora:* 📅 ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}\n\n🔗 *Acessar Cartão no Trello:*\nhttps://trello.com/b/88Ail8v8/projetos\n\n_Sistema automatizado de monitoramento B2 Energia Solar_`;
+
+      document.getElementById('testPreviewBox').textContent = preview;
+    }
+
+    document.getElementById('testClientName').addEventListener('input', updateTestPreview);
+    document.getElementById('testEventType').addEventListener('change', updateTestPreview);
+
+    async function sendTestNotification() {
+      const phone = document.getElementById('testPhone').value.trim();
+      const name = document.getElementById('testName').value.trim();
+      const clientName = document.getElementById('testClientName').value.trim();
+      const eventType = document.getElementById('testEventType').value;
+
+      if (!phone) {
+        showToast('Informe o número de telefone com DDD.', 'error');
+        return;
+      }
+
+      showToast('Enviando mensagem de teste via Meta WhatsApp Cloud API...', 'info');
+
+      try {
+        const res = await fetch('/api/test-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, name, clientName, eventType })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Mensagem enviada com sucesso! Message ID: ${data.messageId}`, 'success');
+          loadLogs();
+          loadStatus();
+        } else {
+          showToast(`Falha no envio: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro na requisição: ${err.message}`, 'error');
+      }
+    }
+
+    // DETALHES DO LOG
+    function showLogDetail(logId) {
+      const log = currentLogs.find(l => l.id === logId);
+      if (!log) return;
+      document.getElementById('logDetailContent').textContent = JSON.stringify(log, null, 2);
+      document.getElementById('logDetailModal').classList.remove('hidden');
+    }
+
+    function closeLogModal() {
+      document.getElementById('logDetailModal').classList.add('hidden');
+    }
+
+    // INICIALIZAÇÃO
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshAll();
+      updateTestPreview();
+    });
+  </script>
+</body>
+</html>

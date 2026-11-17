@@ -1,0 +1,27 @@
+{
+  "name": "b2-trello-whatsapp-automation",
+  "version": "1.0.0",
+  "description": "Sistema de automação profissional para B2 Energia Solar integrando Trello e Meta WhatsApp Cloud API 24/7",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node tests/test-engine.js"
+  },
+  "keywords": [
+    "trello",
+    "whatsapp",
+    "meta-cloud-api",
+    "solar",
+    "automation",
+    "webhook"
+  ],
+  "author": "B2 Energia Solar",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
