@@ -151,67 +151,46 @@ export class TrelloService {
       ? `https://trello.com/c/${cardShortLink}` 
       : (card.id ? `https://trello.com/c/${card.id}` : 'https://trello.com/b/88Ail8v8/projetos');
 
-    // REGRA ESTRITA: Disparo EXCLUSIVO por movimentação de listas no Trello:
+    // REGRA ESTRITA E ÚNICA: Disparo EXCLUSIVO e SOMENTE para 2 movimentações:
     // 1) Concessionária -> Vistoria  (Solicitação de Vistoria)
     // 2) Vistoria -> Concluídos      (Vistoria Concluída)
-    // 3) Concessionária -> Aprovado  (Projeto Aprovado na Concessionária)
-    // NENHUM comentário (commentCard), etiqueta ou outro campo dispara notificação!
+    // NENHUMA outra ação ou lista dispara WhatsApp (nem comentários, nem aprovação, nem novas UCs, nada)!
     if (actionType === 'updateCard' && data.listAfter && data.listBefore) {
       const targetListName = (data.listAfter.name || '').trim().toLowerCase();
       const previousListName = (data.listBefore.name || '').trim().toLowerCase();
 
-      // Regra 1: Mudança para Vistoria (vindo de Concessionária ou Aprovado)
-      if (targetListName.includes('vistoria') && !targetListName.includes('conclu')) {
-        if (previousListName.includes('concession') || previousListName.includes('aprovad')) {
-          return {
-            actionId,
-            cardId,
-            clientName,
-            cardUrl,
-            eventType: 'VISTORIA_SOLICITADA',
-            newStatus: data.listAfter.name || 'Solicitação de Vistoria',
-            triggerSource: 'LIST_MOVE',
-            prazoExecucao: '5 dias úteis para execução',
-            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
-          };
-        }
+      // Regra 1: EXCLUSIVAMENTE de Concessionária para Vistoria
+      if (previousListName.includes('concession') && targetListName.includes('vistoria') && !targetListName.includes('conclu')) {
+        return {
+          actionId,
+          cardId,
+          clientName,
+          cardUrl,
+          eventType: 'VISTORIA_SOLICITADA',
+          newStatus: data.listAfter.name || 'Solicitação de Vistoria',
+          triggerSource: 'LIST_MOVE',
+          prazoExecucao: '5 dias úteis para execução',
+          detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
+        };
       }
 
-      // Regra 2: Mudança de Vistoria para Concluídos
-      if (targetListName.includes('concluíd') || targetListName.includes('concluid') || targetListName.includes('conclu')) {
-        if (previousListName.includes('vistoria')) {
-          return {
-            actionId,
-            cardId,
-            clientName,
-            cardUrl,
-            eventType: 'VISTORIA_CONCLUIDO',
-            newStatus: data.listAfter.name || 'Vistoria Concluída',
-            triggerSource: 'LIST_MOVE',
-            prazoExecucao: '5 dias úteis para execução',
-            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
-          };
-        }
-      }
-
-      // Regra 3: Mudança de Concessionária para Aprovado
-      if (targetListName === 'aprovado' || (targetListName.includes('aprovad') && !targetListName.includes('reprovad'))) {
-        if (previousListName.includes('concession')) {
-          return {
-            actionId,
-            cardId,
-            clientName,
-            cardUrl,
-            eventType: 'CONCESSIONARIA_APROVADO',
-            newStatus: data.listAfter.name || 'Aprovado na Concessionária',
-            triggerSource: 'LIST_MOVE',
-            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
-          };
-        }
+      // Regra 2: EXCLUSIVAMENTE de Vistoria para Concluído / Concluídos
+      if (previousListName.includes('vistoria') && (targetListName.includes('concluíd') || targetListName.includes('concluid') || targetListName.includes('conclu'))) {
+        return {
+          actionId,
+          cardId,
+          clientName,
+          cardUrl,
+          eventType: 'VISTORIA_CONCLUIDO',
+          newStatus: data.listAfter.name || 'Vistoria Concluída',
+          triggerSource: 'LIST_MOVE',
+          prazoExecucao: '5 dias úteis para execução',
+          detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
+        };
       }
     }
 
-    // Nenhuma outra ação é permitida a disparar mensagens no WhatsApp
+    // NADA MAIS dispara WhatsApp sob nenhuma hipótese
     return null;
   }
 

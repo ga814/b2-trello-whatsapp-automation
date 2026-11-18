@@ -67,7 +67,7 @@ runTest('NÃO deve disparar notificação em comentários de cartões (commentCa
     type: 'commentCard',
     data: {
       card: { id: 'card_003', name: 'TESTE CLIENTE' },
-      text: 'Nota de Serviço: 000652112423'
+      text: 'Nota de Atendimento: 045006522737'
     }
   };
 
@@ -75,8 +75,8 @@ runTest('NÃO deve disparar notificação em comentários de cartões (commentCa
   assert.strictEqual(parsed, null);
 });
 
-// 2. TESTE DE DETECÇÃO: MOVIMENTAÇÃO PARA A LISTA "APROVADO"
-runTest('Deve detectar quando o cartão é movido para a lista "Aprovado"', () => {
+// 4. TESTE DE BLOQUEIO: MOVIMENTAÇÃO PARA OUTRAS LISTAS (EX: APROVADO OU NOVOS PROJETOS) NÃO DISPARAM
+runTest('NÃO deve disparar quando movido para Aprovado ou outras listas', () => {
   const payload = {
     id: 'act_list_move_789',
     type: 'updateCard',
@@ -91,8 +91,7 @@ runTest('Deve detectar quando o cartão é movido para a lista "Aprovado"', () =
   };
 
   const parsed = trelloService.parseWebhookAction(payload);
-  assert.strictEqual(parsed.eventType, 'CONCESSIONARIA_APROVADO');
-  assert.strictEqual(parsed.triggerSource, 'LIST_MOVE');
+  assert.strictEqual(parsed, null);
 });
 
 // 3. TESTE DE FORMATAÇÃO DE MENSAGEM
