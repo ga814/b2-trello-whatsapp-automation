@@ -151,145 +151,67 @@ export class TrelloService {
       ? `https://trello.com/c/${cardShortLink}` 
       : (card.id ? `https://trello.com/c/${card.id}` : 'https://trello.com/b/88Ail8v8/projetos');
 
-    // 1. GATILHO POR CAMPO PERSONALIZADO (updateCustomFieldItem)
-    if (actionType === 'updateCustomFieldItem') {
-      const customField = data.customField || {};
-      const customFieldItem = data.customFieldItem || {};
-      const fieldName = (customField.name || '').trim().toLowerCase();
-
-      // Valor novo selecionado (dropdown)
-      const selectedOption = data.customFieldOption?.value?.text || 
-                             customFieldItem.value?.text || 
-                             '';
-      const cleanValue = selectedOption.trim().toLowerCase();
-
-      // Regra 1: Concessionária -> Aprovado
-      if (fieldName.includes('concession') && cleanValue.includes('aprovad')) {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'CONCESSIONARIA_APROVADO',
-          newStatus: selectedOption || 'Aprovado',
-          triggerSource: 'CUSTOM_FIELD'
-        };
-      }
-
-      // Regra 2: Vistoria -> Concluído
-      if (fieldName.includes('vistoria') && (cleanValue.includes('conclu') || cleanValue.includes('aprovad'))) {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'VISTORIA_CONCLUIDO',
-          newStatus: selectedOption || 'Concluído',
-          triggerSource: 'CUSTOM_FIELD'
-        };
-      }
-    }
-
-    // 2. GATILHO POR MOVIMENTAÇÃO DE LISTA (updateCard - listAfter)
-    if (actionType === 'updateCard' && data.listAfter) {
+    // REGRA ESTRITA: Disparo EXCLUSIVO por movimentação de listas no Trello:
+    // 1) Concessionária -> Vistoria  (Solicitação de Vistoria)
+    // 2) Vistoria -> Concluídos      (Vistoria Concluída)
+    // 3) Concessionária -> Aprovado  (Projeto Aprovado na Concessionária)
+    // NENHUM comentário (commentCard), etiqueta ou outro campo dispara notificação!
+    if (actionType === 'updateCard' && data.listAfter && data.listBefore) {
       const targetListName = (data.listAfter.name || '').trim().toLowerCase();
-      const previousListName = (data.listBefore?.name || '').trim().toLowerCase();
+      const previousListName = (data.listBefore.name || '').trim().toLowerCase();
 
-      // Se moveu para a lista "Aprovado"
-      if (targetListName === 'aprovado' || (targetListName.includes('aprovad') && !targetListName.includes('reprovad'))) {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'CONCESSIONARIA_APROVADO',
-          newStatus: data.listAfter.name || 'Aprovado na Concessionária',
-          triggerSource: 'LIST_MOVE',
-          detail: `Movido de [${data.listBefore?.name || 'Lista'}] para [${data.listAfter.name}]`
-        };
-      }
-
-      // Se moveu para a lista "Vistoria"
-      if (targetListName === 'vistoria' || (targetListName.includes('vistoria') && !targetListName.includes('conclu'))) {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'VISTORIA_SOLICITADA',
-          newStatus: data.listAfter.name || 'Vistoria Solicitada',
-          triggerSource: 'LIST_MOVE',
-          prazoExecucao: '5 dias úteis para execução',
-          detail: `Movido de [${data.listBefore?.name || 'Lista'}] para [${data.listAfter.name}]`
-        };
-      }
-
-      // Se moveu para a lista "🎉 Concluídos"
-      if (targetListName.includes('concluíd') || targetListName.includes('concluid')) {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'VISTORIA_CONCLUIDO',
-          newStatus: data.listAfter.name || 'Vistoria Concluída',
-          triggerSource: 'LIST_MOVE',
-          prazoExecucao: '5 dias úteis para execução',
-          detail: `Movido de [${data.listBefore?.name || 'Lista'}] para [${data.listAfter.name}]`
-        };
-      }
-    }
-
-    // 3. GATILHO POR ETIQUETA (addLabelToCard)
-    if (actionType === 'addLabelToCard' && data.label) {
-      const labelName = (data.label.name || '').trim().toLowerCase();
-      if (labelName === 'concluido' || labelName === 'concluído') {
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'VISTORIA_CONCLUIDO',
-          newStatus: 'Concluído (Etiqueta)',
-          triggerSource: 'LABEL',
-          prazoExecucao: '5 dias úteis para execução',
-          detail: `Etiqueta ${data.label.name} adicionada`
-        };
-      }
-    }
-
-    // 4. GATILHO POR COMENTÁRIO (commentCard) - Ex: "Vistoria: 045006474058"
-    if (actionType === 'commentCard' && data.text) {
-      const text = data.text;
-      const lower = text.toLowerCase();
-      if (lower.includes('vistoria') || lower.includes('nota de serviço') || lower.includes('nota de atendimento')) {
-        let nota = '';
-        const match = text.match(/(?:nota(?:\s+de\s+(?:servi[çc]o|atendimento|vistoria))?|vistoria)\s*[:\-=]?\s*\*?\*?([0-9]{6,15})\*?\*?/i) ||
-                      text.match(/\b([0-9]{10,14})\b/);
-        if (match) {
-          nota = match[1];
-        } else {
-          const afterVistoria = text.split(/vistoria/i)[1]?.trim();
-          if (afterVistoria) {
-            nota = afterVistoria.split('\n')[0].replace(/^[:\-\s]+/, '').trim();
-          }
+      // Regra 1: Mudança para Vistoria (vindo de Concessionária ou Aprovado)
+      if (targetListName.includes('vistoria') && !targetListName.includes('conclu')) {
+        if (previousListName.includes('concession') || previousListName.includes('aprovad')) {
+          return {
+            actionId,
+            cardId,
+            clientName,
+            cardUrl,
+            eventType: 'VISTORIA_SOLICITADA',
+            newStatus: data.listAfter.name || 'Solicitação de Vistoria',
+            triggerSource: 'LIST_MOVE',
+            prazoExecucao: '5 dias úteis para execução',
+            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
+          };
         }
+      }
 
-        return {
-          actionId,
-          cardId,
-          clientName,
-          cardUrl,
-          eventType: 'VISTORIA_SOLICITADA',
-          newStatus: 'Solicitação de Vistoria',
-          triggerSource: 'COMMENT',
-          notaVistoria: nota || null,
-          prazoExecucao: '5 dias úteis para execução',
-          detail: `Comentário no cartão: ${text.substring(0, 100)}`
-        };
+      // Regra 2: Mudança de Vistoria para Concluídos
+      if (targetListName.includes('concluíd') || targetListName.includes('concluid') || targetListName.includes('conclu')) {
+        if (previousListName.includes('vistoria')) {
+          return {
+            actionId,
+            cardId,
+            clientName,
+            cardUrl,
+            eventType: 'VISTORIA_CONCLUIDO',
+            newStatus: data.listAfter.name || 'Vistoria Concluída',
+            triggerSource: 'LIST_MOVE',
+            prazoExecucao: '5 dias úteis para execução',
+            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
+          };
+        }
+      }
+
+      // Regra 3: Mudança de Concessionária para Aprovado
+      if (targetListName === 'aprovado' || (targetListName.includes('aprovad') && !targetListName.includes('reprovad'))) {
+        if (previousListName.includes('concession')) {
+          return {
+            actionId,
+            cardId,
+            clientName,
+            cardUrl,
+            eventType: 'CONCESSIONARIA_APROVADO',
+            newStatus: data.listAfter.name || 'Aprovado na Concessionária',
+            triggerSource: 'LIST_MOVE',
+            detail: `Movido de [${data.listBefore.name}] para [${data.listAfter.name}]`
+          };
+        }
       }
     }
 
+    // Nenhuma outra ação é permitida a disparar mensagens no WhatsApp
     return null;
   }
 

@@ -19,32 +19,60 @@ function runTest(name, fn) {
   }
 }
 
-// 1. TESTE DE DETECÇÃO: CAMPO PERSONALIZADO CONCESSIONÁRIA -> APROVADO
-runTest('Deve detectar alteração no Custom Field "Concessionária" para "Aprovado"', () => {
+// 1. TESTE DE DETECÇÃO: MOVIMENTAÇÃO DE CONCESSIONÁRIA PARA VISTORIA
+runTest('Deve detectar quando o cartão é movido de Concessionária para Vistoria', () => {
   const payload = {
-    id: 'act_custom_field_123',
-    type: 'updateCustomFieldItem',
+    id: 'act_list_move_vistoria',
+    type: 'updateCard',
     data: {
       card: {
-        id: 'card_mirian_001',
-        name: 'MIRIAN PAMPOLIM BATISTA',
-        shortLink: 'Kbx8KP5s'
+        id: 'card_vistoria_001',
+        name: 'LUCIA CIRINO PEREIRA',
+        shortLink: 's5vX8OZ5'
       },
-      customField: {
-        id: 'cf_concessionaria_id',
-        name: 'Concessionária'
-      },
-      customFieldOption: {
-        value: { text: 'Aprovado' }
-      }
+      listBefore: { id: '6a67bd66996286fe4704c129', name: 'Concessionária' },
+      listAfter: { id: '6a67bd6fc49d256a4dbb25df', name: 'Vistoria' }
     }
   };
 
   const parsed = trelloService.parseWebhookAction(payload);
-  assert.strictEqual(parsed.eventType, 'CONCESSIONARIA_APROVADO');
-  assert.strictEqual(parsed.clientName, 'MIRIAN PAMPOLIM BATISTA');
-  assert.strictEqual(parsed.cardUrl, 'https://trello.com/c/Kbx8KP5s');
-  assert.strictEqual(parsed.newStatus, 'Aprovado');
+  assert.strictEqual(parsed.eventType, 'VISTORIA_SOLICITADA');
+  assert.strictEqual(parsed.clientName, 'LUCIA CIRINO PEREIRA');
+  assert.strictEqual(parsed.cardUrl, 'https://trello.com/c/s5vX8OZ5');
+});
+
+// 2. TESTE DE DETECÇÃO: MOVIMENTAÇÃO DE VISTORIA PARA CONCLUÍDOS
+runTest('Deve detectar quando o cartão é movido de Vistoria para Concluídos', () => {
+  const payload = {
+    id: 'act_list_move_concluido',
+    type: 'updateCard',
+    data: {
+      card: {
+        id: 'card_concluido_002',
+        name: 'LUCIA CIRINO PEREIRA'
+      },
+      listBefore: { id: '6a67bd6fc49d256a4dbb25df', name: 'Vistoria' },
+      listAfter: { id: '6a68a86d2b94cf74712ee849', name: '🎉 Concluídos' }
+    }
+  };
+
+  const parsed = trelloService.parseWebhookAction(payload);
+  assert.strictEqual(parsed.eventType, 'VISTORIA_CONCLUIDO');
+});
+
+// 3. TESTE DE BLOQUEIO: COMENTÁRIOS E OUTRAS LISTAS NÃO DISPARAM
+runTest('NÃO deve disparar notificação em comentários de cartões (commentCard)', () => {
+  const payload = {
+    id: 'act_comment_test',
+    type: 'commentCard',
+    data: {
+      card: { id: 'card_003', name: 'TESTE CLIENTE' },
+      text: 'Nota de Serviço: 000652112423'
+    }
+  };
+
+  const parsed = trelloService.parseWebhookAction(payload);
+  assert.strictEqual(parsed, null);
 });
 
 // 2. TESTE DE DETECÇÃO: MOVIMENTAÇÃO PARA A LISTA "APROVADO"
