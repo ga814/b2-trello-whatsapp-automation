@@ -240,13 +240,20 @@ export class UnifiedWhatsAppService {
   buildNotificationMessage({ clientName, eventType, newStatus, cardUrl, dateFormatted, notaVistoria, prazoExecucao }) {
     const isConcessionaria = eventType === 'CONCESSIONARIA_APROVADO';
     const isVistoriaSolicitada = eventType === 'VISTORIA_SOLICITADA';
-    const headerEmoji = isConcessionaria ? '⚡' : '🔍';
+    const isVistoriaConcluido = eventType === 'VISTORIA_CONCLUIDO';
     
+    let headerEmoji = '🔍';
     let title = 'VISTORIA CONCLUÍDA COM SUCESSO';
-    if (isConcessionaria) {
-      title = 'PROJETO APROVADO NA CONCESSIONÁRIA';
-    } else if (isVistoriaSolicitada || notaVistoria) {
+
+    if (isVistoriaConcluido) {
+      headerEmoji = '🎉';
+      title = 'VISTORIA CONCLUÍDA COM SUCESSO';
+    } else if (isVistoriaSolicitada) {
+      headerEmoji = '🔍';
       title = 'SOLICITAÇÃO DE VISTORIA NA CONCESSIONÁRIA';
+    } else if (isConcessionaria) {
+      headerEmoji = '⚡';
+      title = 'PROJETO APROVADO NA CONCESSIONÁRIA';
     }
 
     const lines = [
@@ -261,7 +268,7 @@ export class UnifiedWhatsAppService {
       lines.push(`*Nota de Vistoria / Serviço:* 📄 ${notaVistoria}`);
     }
 
-    if (!isConcessionaria) {
+    if (isVistoriaSolicitada) {
       lines.push(`*Prazo da Concessionária:* ⏳ ${prazoExecucao || '5 dias úteis para execução'}`);
     }
 
