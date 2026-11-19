@@ -159,8 +159,8 @@ export class TrelloService {
       const targetListName = (data.listAfter.name || '').trim().toLowerCase();
       const previousListName = (data.listBefore.name || '').trim().toLowerCase();
 
-      // Regra 1: EXCLUSIVAMENTE de Concessionária para Vistoria
-      if (previousListName.includes('concession') && targetListName.includes('vistoria') && !targetListName.includes('conclu')) {
+      // Regra 1: Mudança para Vistoria (vindo de Concessionária ou Aprovado)
+      if ((previousListName.includes('concession') || previousListName.includes('aprovad')) && targetListName.includes('vistoria') && !targetListName.includes('conclu')) {
         return {
           actionId,
           cardId,
